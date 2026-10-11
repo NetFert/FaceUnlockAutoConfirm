@@ -1,0 +1,26 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build
+        shell: powershell
+        run: .\build.ps1
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: FaceUnlockAutoConfirm
+          path: bin/FaceUnlockAutoConfirm.exe
+          if-no-files-found: error

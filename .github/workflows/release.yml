@@ -1,0 +1,40 @@
+name: release
+
+# Tag v* -> build, package, SHA-256, GitHub Release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build
+        shell: powershell
+        run: .\build.ps1
+
+      - name: Package
+        shell: powershell
+        run: |
+          $name = "FaceUnlockAutoConfirm-$env:GITHUB_REF_NAME"
+          New-Item -ItemType Directory -Force "dist\$name" | Out-Null
+          Copy-Item bin\FaceUnlockAutoConfirm.exe, install.ps1, uninstall.ps1, README.md, LICENSE "dist\$name"
+          Compress-Archive -Path "dist\$name\*" -DestinationPath "dist\$name.zip"
+          Copy-Item bin\FaceUnlockAutoConfirm.exe dist\
+          Get-ChildItem dist -File | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          } | Set-Content dist\SHA256SUMS.txt -Encoding ascii
+
+      - name: Publish release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME `
+            "dist\FaceUnlockAutoConfirm-$env:GITHUB_REF_NAME.zip" dist\FaceUnlockAutoConfirm.exe dist\SHA256SUMS.txt `
+            --title $env:GITHUB_REF_NAME --generate-notes
